@@ -1,16 +1,12 @@
 use itertools::Itertools;
 use serde_json;
-use std::error::Error;
 
-trait Query {
+pub trait Query {
     type Response: serde::de::DeserializeOwned;
 
-    // Probably it'll be unnecessary to redefine it ever
-    fn execute(&self, cli: reqwest::Client) -> Result<Self::Response, Box<dyn Error>> {
-        return Ok(cli.execute(self.request(&cli))?.json()?);
-    }
+    fn payload(&self) -> Vec<u8>;
 
-    fn request(&self, cli: &reqwest::Client) -> reqwest::Request;
+    fn path(&self) -> String;
 }
 
 struct CountQuery {
@@ -29,26 +25,27 @@ struct CountQueryResponse {
 impl Query for CountQuery {
     type Response = CountQueryResponse;
 
-    fn request(&self, cli: &reqwest::Client) -> reqwest::Request {
+    fn payload(&self) -> Vec<u8> {
         #[derive(serde::Serialize)]
         struct Request {
             query: InternalQuery,
         }
+        let request_body = Request {
+            query: InternalQuery {
+                bool: self.filters.clone(),
+            },
+        };
+        serde_json::to_vec(&request_body).unwrap()
+    }
 
-        let mut url = self.base_url.clone();
-        url = url.join(&self.index).unwrap();
+    fn path(&self) -> String {
+        let mut parts: Vec<&str> = Vec::new();
+        parts.push(&self.index);
         if let Some(doc_type) = &self.doc_type {
-            url = url.join(&doc_type).unwrap();
+            parts.push(doc_type)
         }
-        url = url.join("_count").unwrap();
-        cli.post(url)
-            .json(&Request {
-                query: InternalQuery {
-                    bool: self.filters.clone(),
-                },
-            })
-            .build()
-            .unwrap()
+        parts.push("_count");
+        parts.iter().join("/")
     }
 }
 
@@ -89,7 +86,7 @@ struct GroupByKey {
 impl Query for TermsCountQuery {
     type Response = TermsCountQueryResponse;
 
-    fn request(&self, cli: &reqwest::Client) -> reqwest::Request {
+    fn payload(&self) -> Vec<u8> {
         #[derive(serde::Serialize)]
         struct Request {
             query: InternalQuery,
@@ -113,30 +110,31 @@ impl Query for TermsCountQuery {
             field: String,
             count: u32,
         }
-
-        let mut url = self.base_url.clone();
-        url = url.join(&self.index).unwrap();
-        if let Some(doc_type) = &self.doc_type {
-            url = url.join(&doc_type).unwrap();
-        }
-        url = url.join("_count").unwrap();
-        cli.post(url)
-            .json(&Request {
-                size: 0,
-                query: InternalQuery {
-                    bool: self.filters.clone(),
-                },
-                aggregations: RequestAggregations {
-                    group_by_key: TermsAggregation {
-                        terms: RequstTermsBody {
-                            field: self.key.clone(),
-                            count: self.count,
-                        },
+        let request_body = Request {
+            size: 0,
+            query: InternalQuery {
+                bool: self.filters.clone(),
+            },
+            aggregations: RequestAggregations {
+                group_by_key: TermsAggregation {
+                    terms: RequstTermsBody {
+                        field: self.key.clone(),
+                        count: self.count,
                     },
                 },
-            })
-            .build()
-            .unwrap()
+            },
+        };
+        serde_json::to_vec(&request_body).unwrap()
+    }
+
+    fn path(&self) -> String {
+        let mut parts: Vec<&str> = Vec::new();
+        parts.push(&self.index);
+        if let Some(doc_type) = &self.doc_type {
+            parts.push(doc_type)
+        }
+        parts.push("_search");
+        parts.iter().join("/")
     }
 }
 
