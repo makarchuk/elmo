@@ -1,4 +1,4 @@
-mod sharp_decrease;
+pub mod sharp_decrease;
 use super::alert::Alert;
 use super::elasticsearch::queries;
 use chrono;
@@ -24,7 +24,9 @@ pub fn range_query(
         serde_json::Value::String(from.to_rfc3339()),
     );
     range.insert("lte".to_owned(), serde_json::Value::String(to.to_rfc3339()));
+    let mut outer_range = serde_json::Map::new();
+    outer_range.insert(field, serde_json::Value::Object(range));
     let mut result = serde_json::Map::new();
-    result.insert(field, serde_json::Value::Object(range));
+    result.insert("range".to_owned(), serde_json::Value::Object(outer_range));
     result
 }

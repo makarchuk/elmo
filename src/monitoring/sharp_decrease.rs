@@ -4,25 +4,22 @@ use chrono;
 use std::error::Error;
 use std::time::Duration;
 
-struct SharpDecrease {
-    // Delay in monitoring.
-    // We ususally don't want to monitor `now` moment due to delays in transport
-    delay: Duration,
-    // Monitoring interval
-    interval: Duration,
+pub struct SharpDecrease {
+    // Monitored interval
+    pub interval: Duration,
     // We are comparing interval with previous look_back * interval
     // It will help us to ignore short spikes
-    look_back: u8,
+    pub look_back: u8,
     //decrease factor
-    factor: u8,
+    pub factor: u8,
 
-    search: super::Search,
+    pub search: super::Search,
 }
 
 impl SharpDecrease {
-    fn check(
+    pub fn check(
         &self,
-        client: elasticsearch::client::ElasticClient,
+        client: &elasticsearch::client::ElasticClient,
         point: chrono::DateTime<chrono::Utc>,
     ) -> Result<Vec<Alert>, Box<Error>> {
         let interval = chrono::Duration::from_std(self.interval).unwrap();
@@ -52,6 +49,10 @@ impl SharpDecrease {
             .count;
         let factored_count: u64 = new_count * self.factor as u64 * self.look_back as u64;
         if factored_count < old_count {
+            println!(
+                "Sharp decrease detected at {}. Was: {}. Now: {}",
+                point, old_count, new_count
+            );
             return Ok(vec![Alert {}]);
         }
         return Ok(vec![]);

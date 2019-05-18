@@ -34,7 +34,9 @@ impl Query for CountQuery {
         }
         let request_body = Request {
             query: InternalQuery {
-                bool: self.filters.clone(),
+                bool: InternalFilters {
+                    filter: self.filters.clone(),
+                },
             },
         };
         serde_json::to_vec(&request_body).unwrap()
@@ -114,7 +116,9 @@ impl Query for TermsCountQuery {
         let request_body = Request {
             size: 0,
             query: InternalQuery {
-                bool: self.filters.clone(),
+                bool: InternalFilters {
+                    filter: self.filters.clone(),
+                },
             },
             aggregations: RequestAggregations {
                 group_by_key: TermsAggregation {
@@ -141,5 +145,10 @@ impl Query for TermsCountQuery {
 
 #[derive(serde::Serialize)]
 struct InternalQuery {
-    bool: Filters,
+    bool: InternalFilters,
+}
+
+#[derive(serde::Serialize)]
+struct InternalFilters {
+    filter: Filters,
 }

@@ -2,8 +2,8 @@ use super::queries;
 use std::error::Error;
 
 pub struct ElasticClient {
-    base_url: reqwest::Url,
-    http_client: reqwest::Client,
+    pub base_url: reqwest::Url,
+    pub http_client: reqwest::Client,
 }
 
 impl ElasticClient {
