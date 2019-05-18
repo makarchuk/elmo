@@ -9,17 +9,19 @@ pub trait Query {
     fn path(&self) -> String;
 }
 
-struct CountQuery {
-    base_url: reqwest::Url,
-    index: String,
-    doc_type: Option<String>,
-    filters: Vec<serde_json::Map<String, serde_json::Value>>,
+pub type Filter = serde_json::Map<String, serde_json::Value>;
+pub type Filters = Vec<Filter>;
+
+pub struct CountQuery {
+    pub base_url: reqwest::Url,
+    pub index: String,
+    pub doc_type: Option<String>,
+    pub filters: Filters,
 }
 
 #[derive(serde::Deserialize)]
-struct CountQueryResponse {
-    count: u64,
-    shards: Shards,
+pub struct CountQueryResponse {
+    pub count: u64,
 }
 
 impl Query for CountQuery {
@@ -53,7 +55,7 @@ struct TermsCountQuery {
     base_url: reqwest::Url,
     index: String,
     doc_type: Option<String>,
-    filters: Vec<serde_json::Map<String, serde_json::Value>>,
+    filters: Filters,
 
     key: String,
     count: u32,
@@ -62,7 +64,6 @@ struct TermsCountQuery {
 #[derive(serde::Deserialize)]
 struct TermsCountQueryResponse {
     aggregations: Aggregations,
-    shards: Shards,
 }
 
 #[derive(serde::Deserialize)]
@@ -140,13 +141,5 @@ impl Query for TermsCountQuery {
 
 #[derive(serde::Serialize)]
 struct InternalQuery {
-    bool: Vec<serde_json::Map<String, serde_json::Value>>,
-}
-
-#[derive(serde::Deserialize)]
-struct Shards {
-    total: u64,
-    successful: u64,
-    skipped: u64,
-    failed: u64,
+    bool: Filters,
 }

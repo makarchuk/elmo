@@ -1,4 +1,3 @@
 mod alert;
-mod elastic_client;
+mod elasticsearch;
 mod monitoring;
-mod query;
