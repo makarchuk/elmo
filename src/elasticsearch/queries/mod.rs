@@ -12,6 +12,13 @@ pub trait Query {
 pub type Filter = serde_json::Map<String, serde_json::Value>;
 pub type Filters = Vec<Filter>;
 
+//Helper function that allows us to push additional filter
+pub fn add_filter(base: &Filters, additional: Filter) -> Filters {
+    let mut new_filters = base.clone();
+    new_filters.push(additional);
+    new_filters
+}
+
 pub struct CountQuery {
     pub base_url: reqwest::Url,
     pub index: String,

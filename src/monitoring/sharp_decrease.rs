@@ -23,12 +23,14 @@ impl SharpDecrease {
         point: chrono::DateTime<chrono::Utc>,
     ) -> Result<Vec<Alert>, Box<Error>> {
         let interval = chrono::Duration::from_std(self.interval).unwrap();
-        let mut filters = self.search.filters.clone();
-        filters.push(super::range_query(
-            self.search.time_field.clone(),
-            point - interval * (self.look_back + 1).into(),
-            point - interval,
-        ));
+        let filters = elasticsearch::queries::add_filter(
+            &self.search.filters,
+            super::range_query(
+                self.search.time_field.clone(),
+                point - interval * (self.look_back + 1).into(),
+                point - interval,
+            ),
+        );
         let old_count = client
             .perform(client.count_query(
                 &self.search.index,
@@ -36,10 +38,10 @@ impl SharpDecrease {
                 filters.clone(),
             ))?
             .count;
-        //replace last filter with new date range
-        let last_filter_index = filters.len() - 1;
-        filters[last_filter_index] =
-            super::range_query(self.search.time_field.clone(), point - interval, point);
+        let filters = elasticsearch::queries::add_filter(
+            &self.search.filters,
+            super::range_query(self.search.time_field.clone(), point - interval, point),
+        );
         let new_count = client
             .perform(client.count_query(
                 &self.search.index,
