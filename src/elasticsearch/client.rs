@@ -28,7 +28,6 @@ impl ElasticClient {
         filters: queries::Filters,
     ) -> queries::CountQuery {
         queries::CountQuery {
-            base_url: self.base_url.clone(),
             index: index.to_string(),
             doc_type: doc_type.clone(),
             filters: filters,

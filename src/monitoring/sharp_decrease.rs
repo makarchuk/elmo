@@ -1,5 +1,8 @@
+//Not imported
+
 use super::super::alert::Alert;
 use super::super::elasticsearch;
+use super::Comparator;
 use chrono;
 use std::error::Error;
 use std::time::Duration;
@@ -16,6 +19,30 @@ pub struct SharpDecrease {
     pub search: super::Search,
 }
 
+struct Metric {
+    old: u64,
+    new: u64,
+}
+
+struct SharpDecreaseComparator {
+    factor: u8,
+    look_back: u8,
+}
+
+impl SharpDecreaseComparator {
+    fn new(factor: u8, look_back: u8) -> Self {
+        Self { factor, look_back }
+    }
+
+    fn check(&self, metric: Self::Metric) -> Vec<Alert> {
+        let factored_count: u64 = metric.new * self.factor as u64 * self.look_back as u64;
+        if factored_count < metric.old {
+            return vec![Alert {}];
+        }
+        vec![]
+    }
+}
+
 impl SharpDecrease {
     pub fn check(
         &self,
@@ -23,40 +50,35 @@ impl SharpDecrease {
         point: chrono::DateTime<chrono::Utc>,
     ) -> Result<Vec<Alert>, Box<Error>> {
         let interval = chrono::Duration::from_std(self.interval).unwrap();
-        let filters = elasticsearch::queries::add_filter(
-            &self.search.filters,
-            super::range_query(
-                self.search.time_field.clone(),
-                point - interval * (self.look_back + 1).into(),
-                point - interval,
-            ),
-        );
         let old_count = client
             .perform(client.count_query(
                 &self.search.index,
                 &self.search.doc_type,
-                filters.clone(),
+                elasticsearch::queries::add_filter(
+                    &self.search.filters,
+                    super::range_query(
+                        self.search.time_field.clone(),
+                        point - interval * (self.look_back + 1).into(),
+                        point - interval,
+                    ),
+                ),
             ))?
             .count;
-        let filters = elasticsearch::queries::add_filter(
-            &self.search.filters,
-            super::range_query(self.search.time_field.clone(), point - interval, point),
-        );
         let new_count = client
             .perform(client.count_query(
                 &self.search.index,
                 &self.search.doc_type,
-                filters.clone(),
+                elasticsearch::queries::add_filter(
+                    &self.search.filters,
+                    super::range_query(self.search.time_field.clone(), point - interval, point),
+                ),
             ))?
             .count;
-        let factored_count: u64 = new_count * self.factor as u64 * self.look_back as u64;
-        if factored_count < old_count {
-            println!(
-                "Sharp decrease detected at {}. Was: {}. Now: {}",
-                point, old_count, new_count
-            );
-            return Ok(vec![Alert {}]);
-        }
-        return Ok(vec![]);
+        Ok(
+            SharpDecreaseComparator::new(self.factor, self.look_back).check(Metric {
+                new: new_count,
+                old: old_count,
+            }),
+        )
     }
 }

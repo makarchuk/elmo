@@ -1,0 +1,32 @@
+{
+    "elasticsearch": {
+        "hosts": [
+            "elasticsearch.local:9200"
+        ]
+    },
+    "monitorings": [
+        {
+            "sharp_decrease": {
+                "search": {
+                    "index": "index_template-*",
+                    "doc_type": "_doc",
+                    "filters": [
+                        {
+                            "term": {
+                                "field": "value"
+                            }
+                        },
+                        {
+                            "wildcard": {
+                                "text_field": "*value*"
+                            }
+                        }
+                    ],
+                    "time_field": "@timestamp"
+                },
+                "look_back": 5,
+                "factor": 5
+            }
+        }
+    ]
+}

@@ -20,7 +20,6 @@ pub fn add_filter(base: &Filters, additional: Filter) -> Filters {
 }
 
 pub struct CountQuery {
-    pub base_url: reqwest::Url,
     pub index: String,
     pub doc_type: Option<String>,
     pub filters: Filters,
@@ -60,37 +59,36 @@ impl Query for CountQuery {
     }
 }
 
-struct TermsCountQuery {
-    base_url: reqwest::Url,
-    index: String,
-    doc_type: Option<String>,
-    filters: Filters,
+pub struct TermsCountQuery {
+    pub index: String,
+    pub doc_type: Option<String>,
+    pub filters: Filters,
 
-    key: String,
-    count: u32,
+    pub key: String,
+    pub count: u32,
 }
 
 #[derive(serde::Deserialize)]
-struct TermsCountQueryResponse {
-    aggregations: Aggregations,
+pub struct TermsCountQueryResponse {
+    pub aggregations: Aggregations,
 }
 
 #[derive(serde::Deserialize)]
-struct Aggregations {
-    group_by_key: GroupByKey,
+pub struct Aggregations {
+    pub group_by_key: GroupByKey,
 }
 
 #[derive(serde::Deserialize)]
-struct Buckets {
-    key: String,
-    doc_count: i64,
+pub struct Buckets {
+    pub key: String,
+    pub doc_count: i64,
 }
 
 #[derive(serde::Deserialize)]
-struct GroupByKey {
-    doc_count_error_upper_bound: i64,
-    sum_other_doc_count: i64,
-    buckets: Vec<Buckets>,
+pub struct GroupByKey {
+    pub doc_count_error_upper_bound: i64,
+    pub sum_other_doc_count: i64,
+    pub buckets: Vec<Buckets>,
 }
 
 impl Query for TermsCountQuery {
