@@ -79,16 +79,16 @@ pub struct Aggregations {
 }
 
 #[derive(serde::Deserialize)]
-pub struct Buckets {
+pub struct Bucket {
     pub key: String,
-    pub doc_count: i64,
+    pub doc_count: u64,
 }
 
 #[derive(serde::Deserialize)]
 pub struct GroupByKey {
-    pub doc_count_error_upper_bound: i64,
-    pub sum_other_doc_count: i64,
-    pub buckets: Vec<Buckets>,
+    pub doc_count_error_upper_bound: u64,
+    pub sum_other_doc_count: u64,
+    pub buckets: Vec<Bucket>,
 }
 
 impl Query for TermsCountQuery {

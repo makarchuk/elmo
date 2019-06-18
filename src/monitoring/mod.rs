@@ -3,6 +3,7 @@
 use super::alert::Alert;
 use super::elasticsearch::queries;
 use chrono;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 
 trait Monitoring {
@@ -112,6 +113,100 @@ impl Monitoring for SharpDecrease {
             return vec![Alert {}];
         }
         return vec![];
+    }
+}
+
+struct GroupedSharpDecreaseConfig {
+    search: Search,
+    // Monitored interval
+    pub interval: chrono::Duration,
+    pub time_factor: u8,
+    //decrease factor
+    pub factor: u8,
+    pub key_field: String,
+    pub groups_count: u8,
+}
+
+struct GroupedSharpDecrease {
+    time_factor: u8,
+    search: Search,
+    comparartor: Comparator,
+    interval: chrono::Duration,
+    key_field: String,
+    groups_count: u8,
+}
+
+impl GroupedSharpDecrease {
+    fn get_counts(
+        &self,
+        client: &super::elasticsearch::client::ElasticClient,
+        from: chrono::DateTime<chrono::Utc>,
+        to: chrono::DateTime<chrono::Utc>,
+    ) -> Result<HashMap<String, u64>, Box<Error>> {
+        Ok(client
+            .perform(super::elasticsearch::queries::TermsCountQuery {
+                index: self.search.index.clone(),
+                key: self.key_field.clone(),
+                doc_type: self.search.doc_type.clone(),
+                count: self.groups_count as u32,
+                filters: super::elasticsearch::queries::add_filter(
+                    &self.search.filters,
+                    range_query(self.search.time_field.clone(), from, to),
+                ),
+            })?
+            .aggregations
+            .group_by_key
+            .buckets
+            .into_iter()
+            .map(|bucket| (bucket.key, bucket.doc_count))
+            .collect())
+    }
+}
+
+impl Monitoring for GroupedSharpDecrease {
+    type Config = GroupedSharpDecreaseConfig;
+    type Metric = Diff<HashMap<String, u64>>;
+
+    fn new(config: Self::Config) -> Self {
+        unimplemented!()
+    }
+
+    fn load_metric(
+        &self,
+        client: &super::elasticsearch::client::ElasticClient,
+        point: chrono::DateTime<chrono::Utc>,
+    ) -> Result<Self::Metric, Box<Error>> {
+        Ok(Diff::<_> {
+            old: self.get_counts(
+                client,
+                point - self.interval * (self.time_factor + 1) as i32,
+                point - self.interval,
+            )?,
+            new: self.get_counts(client, point - self.interval, point)?,
+        })
+    }
+
+    fn check(&self, m: Self::Metric) -> Vec<Alert> {
+        m.old
+            .keys()
+            .into_iter()
+            .chain(m.new.keys().into_iter())
+            .filter_map(|k| {
+                let diff = Diff::<u64> {
+                    old: *m.old.get(k).unwrap_or(&0),
+                    new: *m.new.get(k).unwrap_or(&0),
+                };
+                if self.comparartor.check(&diff) {
+                    println!(
+                        "Sharp decrease: {} to {} for key: {}",
+                        diff.old, diff.new, k
+                    );
+                    Some(Alert {})
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 
