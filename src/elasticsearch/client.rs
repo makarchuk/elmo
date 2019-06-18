@@ -12,13 +12,13 @@ impl ElasticClient {
         Q: queries::Query,
     {
         let url = self.base_url.join(&q.path())?;
-        let request = self
+        Ok(self
             .http_client
-            .request(reqwest::Method::POST, url)
+            .post(url)
             .body(q.payload())
             .header("Content-Type", "application/json")
-            .build()?;
-        Ok(self.http_client.execute(request)?.json()?)
+            .send()?
+            .json()?)
     }
 
     pub fn count_query(
