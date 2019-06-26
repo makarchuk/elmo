@@ -6,12 +6,14 @@ use chrono;
 use std::collections::{HashMap, HashSet};
 use std::error::Error;
 
-trait Monitoring {
-    type Config;
-    type Metric;
+pub trait IntoMonitoring {
+    type Monitoring;
 
-    //Initialize monitoring from configuartion
-    fn new(c: Self::Config) -> Self;
+    fn into_monitoring(self) -> Self::Monitoring;
+}
+
+trait Monitoring {
+    type Metric;
 
     //Load metric from Elasticsearch. Hardly testable, and very fragile
     fn load_metric(
@@ -76,21 +78,23 @@ impl SharpDecrease {
     }
 }
 
-impl Monitoring for SharpDecrease {
-    type Config = SharpDecreaseConfig;
-    type Metric = Diff<u64>;
-
-    fn new(config: Self::Config) -> Self {
-        return Self {
-            search: config.search,
-            time_factor: config.time_factor,
+impl IntoMonitoring for SharpDecreaseConfig {
+    type Monitoring = SharpDecrease;
+    fn into_monitoring(self) -> Self::Monitoring {
+        Self::Monitoring {
+            search: self.search,
+            time_factor: self.time_factor,
             comparartor: Comparator {
-                time_factor: config.time_factor,
-                factor: config.factor,
+                time_factor: self.time_factor,
+                factor: self.factor,
             },
-            interval: config.interval,
-        };
+            interval: self.interval,
+        }
     }
+}
+
+impl Monitoring for SharpDecrease {
+    type Metric = Diff<u64>;
 
     fn load_metric(
         &self,
@@ -163,13 +167,15 @@ impl GroupedSharpDecrease {
     }
 }
 
-impl Monitoring for GroupedSharpDecrease {
-    type Config = GroupedSharpDecreaseConfig;
-    type Metric = Diff<HashMap<String, u64>>;
-
-    fn new(config: Self::Config) -> Self {
-        unimplemented!()
+impl IntoMonitoring for GroupedSharpDecreaseConfig {
+    type Monitoring = GroupedSharpDecrease;
+    fn into_monitoring(self) -> Self::Monitoring {
+        unimplemented!();
     }
+}
+
+impl Monitoring for GroupedSharpDecrease {
+    type Metric = Diff<HashMap<String, u64>>;
 
     fn load_metric(
         &self,
